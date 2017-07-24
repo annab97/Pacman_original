@@ -4,6 +4,7 @@
 #include "pacdef.h"
 #include "field.h"
 #include "pacman.h"
+#include "ghost.h"
 
 //basic
 int Init_game(State** game_state);

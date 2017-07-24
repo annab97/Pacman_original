@@ -188,7 +188,7 @@
 	<math.h>
 	"SDL.h"
 
-1500838085 source:/home/anna/Documents/InfoC/Kódok/pacman/pacman/window.c
+1500896700 source:/home/anna/Documents/InfoC/Kódok/pacman/pacman/window.c
 	"window.h"
 
 1500803535 /home/anna/Documents/InfoC/Kódok/pacman/pacman/window.h
@@ -203,21 +203,26 @@
 1500821267 /home/anna/Documents/InfoC/Kódok/pacman/pacman/field.h
 	"pacdef.h"
 
-1500842842 /home/anna/Documents/InfoC/Kódok/pacman/pacman/pacdef.h
+1500895668 /home/anna/Documents/InfoC/Kódok/pacman/pacman/pacdef.h
 
-1500829233 source:/home/anna/Documents/InfoC/Kódok/pacman/pacman/game.c
+1500895874 source:/home/anna/Documents/InfoC/Kódok/pacman/pacman/game.c
 	"game.h"
-	"pacman.h"
 
-1500821201 /home/anna/Documents/InfoC/Kódok/pacman/pacman/game.h
+1500895517 /home/anna/Documents/InfoC/Kódok/pacman/pacman/game.h
 	"pacdef.h"
 	"field.h"
 	"pacman.h"
+	"ghost.h"
 
-1500825870 /home/anna/Documents/InfoC/Kódok/pacman/pacman/pacman.h
+1500888541 /home/anna/Documents/InfoC/Kódok/pacman/pacman/pacman.h
 	"pacdef.h"
-	"game.h"
 
-1500842848 source:/home/anna/Documents/InfoC/Kódok/pacman/pacman/pacman.c
+1500888588 source:/home/anna/Documents/InfoC/Kódok/pacman/pacman/pacman.c
 	"pacman.h"
+
+1500895964 /home/anna/Documents/InfoC/Kódok/pacman/pacman/ghost.h
+	"pacdef.h"
+
+1500896242 source:/home/anna/Documents/InfoC/Kódok/pacman/pacman/ghost.c
+	"ghost.h"
 

@@ -2,6 +2,10 @@
 
 #define TILE_SIZE 8*3
 
+#define DRAW_TICK SDL_USEREVENT+1
+
+#define PAC_TICK SDL_USEREVENT+2
+
 void Drawfield(SDL_Surface* img, SDL_Surface* screen, State* game_state)
 {
      SDL_Rect src = {0,0,TILE_SIZE,TILE_SIZE};
@@ -211,6 +215,20 @@ void Drawactors(SDL_Surface* image,SDL_Surface* screen,State* game_state)
      int x=game_state->pacman->windowx*3;
      SDL_Rect dest={x,y,0,0};
      SDL_BlitSurface(image, &src, screen, &dest);
+
+     //Blinky
+     switch(game_state->Blinky->d)
+     {
+        case Standing:
+        case Down:
+        src.x=4*TILE_SIZE;
+        src.y=12*TILE_SIZE;
+        break;
+     }
+     dest.y=game_state->Blinky->windowy*3;
+     dest.x=game_state->Blinky->windowx*3;
+
+     SDL_BlitSurface(image, &src, screen, &dest);
 }
 
 void Draw(SDL_Surface* screen, State* game_state,SDL_Surface* image)
@@ -222,10 +240,18 @@ void Draw(SDL_Surface* screen, State* game_state,SDL_Surface* image)
     SDL_Flip(screen);
 }
 
-Uint32 Tick (Uint32 ms, void* param)
+Uint32 Pac_tick (Uint32 ms, void* param)
 {
     SDL_Event ev;
-    ev.type = SDL_USEREVENT;
+    ev.type = PAC_TICK;
+    SDL_PushEvent(&ev);
+    return ms;   /* ujabb varakozas */
+}
+
+Uint32 Draw_tick (Uint32 ms, void* param)
+{
+    SDL_Event ev;
+    ev.type = DRAW_TICK;
     SDL_PushEvent(&ev);
     return ms;   /* ujabb varakozas */
 }
@@ -251,12 +277,15 @@ Result Init_window()
 
     Draw(screen,game_state,image);
     SDL_Event ev;
-    SDL_TimerID id = SDL_AddTimer(66, Tick, NULL);
+    SDL_TimerID pact = SDL_AddTimer(33, Pac_tick, NULL);
+    SDL_TimerID drawt = SDL_AddTimer(16.5, Draw_tick, NULL);
      while (SDL_WaitEvent(&ev) && ev.type != SDL_QUIT) {
         switch(ev.type)
         {
-            case SDL_USEREVENT:
-                Step(game_state);
+            case PAC_TICK:
+                Step_pacman(game_state);
+            break;
+            case DRAW_TICK:
                 Draw(screen,game_state,image);
             break;
             case SDL_KEYDOWN:
@@ -279,7 +308,8 @@ Result Init_window()
         }
     }
     Close_game(&game_state);
-    SDL_RemoveTimer(id);
+    SDL_RemoveTimer(pact);
+    SDL_RemoveTimer(drawt);
      SDL_FreeSurface(image);
     SDL_Quit();
     return SUCCESFULL;

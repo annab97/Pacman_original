@@ -51,9 +51,29 @@ typedef struct {
     Direction nextd;
 } Pacman;
 
-typedef struct {
+typedef enum {
+    BLINKY, PINKY, INKY, CLYDE
+} GHOST;
+
+struct State;
+
+typedef struct{
+    GHOST name;
+    int x,y;
+    int windowx, windowy;
+    Direction d;
+    Position Target;
+    void (*Step_Ghost) (struct State*);
+} Ghost;
+
+typedef struct State {
     Maze* field;
     Pacman* pacman;
+    Ghost* Blinky;
+    Ghost* Pinky;
+    Ghost* Inky;
+    Ghost* Clyde;
+    int points;
 } State;
 
 #endif // PACDEF_H_INCLUDED
