@@ -42,8 +42,21 @@ int Close_game(State** game_state)
 int Change_mode(State* game_state)
 {
     game_state->modeid++;
+    game_state->currentState=game_state->ls[game_state->levelid].modes[game_state->modeid].name;
     Reverse_ghost_direction(game_state);
     if(game_state->Blinky->d==Standing)
         printf("%d",game_state->Blinky->d);
     return game_state->ls[game_state->levelid].modes[game_state->modeid].delay;
+}
+
+int Start_frightening(State* game_state)
+{
+    game_state->currentState=FRIGHTENING;
+    Reverse_ghost_direction();
+    return game_state->ls[game_state->levelid].fright_time*1000;
+}
+
+void End_frightening(State* game_state)
+{
+ game_state->currentState=game_state->ls[game_state->levelid].modes[game_state->modeid].name;
 }

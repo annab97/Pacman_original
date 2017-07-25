@@ -14,6 +14,8 @@
 
 #define MODE_TICK SDL_USEREVENT+6
 
+#define FRIGHT_END SDL_USEREVENT+7
+
 typedef struct {
     Uint32 event_type;
     Uint32 nexttick;
@@ -177,28 +179,35 @@ void Drawfield(SDL_Surface* img, SDL_Surface* screen, State* game_state)
 
 }
 
-void Drawghost(SDL_Surface* image,SDL_Surface* screen,Ghost* ghost, int startx, int starty)
+void Drawghost(SDL_Surface* image,SDL_Surface* screen,Ghost* ghost, int startx, int starty,ModeName mn)
 {
     SDL_Rect src = {0,0,TILE_SIZE*2,TILE_SIZE*2};
-    switch(ghost->d)
-     {
-        case Standing:
-        case Down:
-        src.x=(startx+4)*TILE_SIZE;
-        src.y=starty*TILE_SIZE;
-        break;
-        case Right:
-        src.x=(startx)*TILE_SIZE;
-        src.y=starty*TILE_SIZE;
-        break;
-        case Up:
-        src.x=(startx+12)*TILE_SIZE;
-        src.y=starty*TILE_SIZE;
-        break;
-        case Left:
-        src.x=(startx+8)*TILE_SIZE;
-        src.y=starty*TILE_SIZE;
-        break;
+    if(mn==FRIGHTENING)
+    {
+     src.y=8*TILE_SIZE;
+     src.x=16*TILE_SIZE;
+    }else
+    {
+        switch(ghost->d)
+         {
+            case Standing:
+            case Down:
+            src.x=(startx+4)*TILE_SIZE;
+            src.y=starty*TILE_SIZE;
+            break;
+            case Right:
+            src.x=(startx)*TILE_SIZE;
+            src.y=starty*TILE_SIZE;
+            break;
+            case Up:
+            src.x=(startx+12)*TILE_SIZE;
+            src.y=starty*TILE_SIZE;
+            break;
+            case Left:
+            src.x=(startx+8)*TILE_SIZE;
+            src.y=starty*TILE_SIZE;
+            break;
+         }
      }
      SDL_Rect dest={0,0,0,0};
      dest.y=ghost->windowy*3;
@@ -209,10 +218,11 @@ void Drawghost(SDL_Surface* image,SDL_Surface* screen,Ghost* ghost, int startx, 
 
 void Drawactors(SDL_Surface* image,SDL_Surface* screen,State* game_state)
 {
-     Drawghost(image,screen,game_state->Blinky,0,12);
-     Drawghost(image,screen,game_state->Pinky,0,16);
-     Drawghost(image,screen,game_state->Inky,16,16);
-     Drawghost(image,screen,game_state->Clyde,0,18);
+     ModeName current=game_state->currentState;
+     Drawghost(image,screen,game_state->Blinky,0,12,current);
+     Drawghost(image,screen,game_state->Pinky,0,16,current);
+     Drawghost(image,screen,game_state->Inky,16,16,current);
+     Drawghost(image,screen,game_state->Clyde,0,18,current);
 
      //DRAWPACMAN
      SDL_Rect src = {0,0,TILE_SIZE*2,TILE_SIZE*2};
@@ -297,8 +307,18 @@ Uint32 Draw_tick (Uint32 ms, void* param)
 
 Uint32 Mode_tick(Uint32 ms, void* param)
 {
+    int* st=(int *) param;
+    *st=SDL_GetTicks();
     SDL_Event ev;
     ev.type = MODE_TICK;
+    SDL_PushEvent(&ev);
+    return 0;
+}
+
+Uint32 Fright_timer(Uint32 ms, void* param)
+{
+    SDL_Event ev;
+    ev.type = FRIGHT_END;
     SDL_PushEvent(&ev);
     return 0;
 }
@@ -322,6 +342,10 @@ Result Init_window()
     State* game_state;
     Init_game(&game_state);
 
+    int before_frightening=-1;
+    SDL_TimerID frightening_timer;
+    int starttime=SDL_GetTicks();
+
     Draw(screen,game_state,image);
     SDL_Event ev;
     ActorTimer Pac_timer={PAC_TICK,33};
@@ -331,18 +355,30 @@ Result Init_window()
     SDL_TimerID drawt = SDL_AddTimer(16.5, Draw_tick, NULL);
 
     int delay=game_state->ls[game_state->levelid].modes[game_state->modeid].delay;
-    SDL_TimerID mode_timer=SDL_AddTimer(delay,Mode_tick,NULL);
+    SDL_TimerID mode_timer=SDL_AddTimer(delay,Mode_tick,&starttime);
+
      while (SDL_WaitEvent(&ev) && ev.type != SDL_QUIT) {
         switch(ev.type)
         {
             case PAC_TICK:
                 ;int hasEaten=Step_pacman(game_state);
                 if(hasEaten==1)
+                {
                     Pac_timer.nexttick=16.5+33;
+                }
                 else if(hasEaten==2)
+                {
+                    SDL_RemoveTimer(frightening_timer);
                     Pac_timer.nexttick=4*16.5+33;
+                    int frigdelay=Start_frightening(game_state);
+                    before_frightening=SDL_GetTicks()-starttime;
+                    frightening_timer=SDL_AddTimer(frigdelay,Fright_timer,NULL);
+                    SDL_RemoveTimer(mode_timer);
+                }
                 else
+                {
                     Pac_timer.nexttick=33;
+                }
             break;
             case BLINKY_TICK:
                 ;int nexttime=Step_Ghost(game_state,game_state->Blinky);
@@ -354,7 +390,12 @@ Result Init_window()
             case MODE_TICK:
                 delay=Change_mode(game_state);
                 if(delay!=-1)
-                    mode_timer=SDL_AddTimer(delay,Mode_tick,NULL);
+                    mode_timer=SDL_AddTimer(delay,Mode_tick,&starttime);
+            break;
+            case FRIGHT_END:
+                End_frightening(game_state);
+                if(delay!=-1)
+                    mode_timer=SDL_AddTimer(delay-before_frightening,Mode_tick,&starttime);
             break;
             case SDL_KEYDOWN:
                 switch(ev.key.keysym.sym)

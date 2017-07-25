@@ -114,6 +114,7 @@ typedef struct State {
     int modeid;
     int levelid;
     int levelnum;
+    ModeName currentState;
 } State;
 
 Position Nextmove(Position pos, Direction dir);

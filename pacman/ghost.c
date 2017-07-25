@@ -12,7 +12,7 @@ void Init_ghost(Ghost* ghost, GHOST name,int x,int y)
 void Blinky_AI(State* game_state)
 {
     Ghost* blinky=game_state->Blinky;
-    switch(game_state->ls->modes[game_state->modeid].name)
+    switch(game_state->currentState)
     {
         case CHASE:
         blinky->Target.x=game_state->pacman->x;
@@ -22,7 +22,8 @@ void Blinky_AI(State* game_state)
         blinky->Target=blinky->home;
         break;
         case FRIGHTENING:
-        //frightening
+        blinky->d=Standing;
+        blinky->Target=blinky->home;
         break;
     }
 

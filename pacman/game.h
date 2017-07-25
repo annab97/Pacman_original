@@ -18,4 +18,8 @@ int Step(State* game_state);
 
 int Change_mode(State* game_state);
 
+int Start_frightening(State* game_state);
+
+void End_frightening(State* game_state);
+
 #endif // PACMAN_H_INCLUDED
