@@ -18,6 +18,40 @@ typedef struct{
 } Position;
 
 typedef enum{
+    SCATTER, CHASE, FRIGHTENING
+} ModeName;
+
+typedef struct{
+    ModeName name;
+    double delay;
+}Mode;
+typedef struct{
+    int fromlevel;
+    Mode modes[8];
+}Mode_table;
+typedef enum{
+    CHERRIES, STRAWBERRY, PEACH, APPLE, GRAPES, GALAXIAN, BELL, KEY
+}Symbol;
+
+typedef struct{
+int id;
+Mode modes[8];
+Symbol symbol;
+int symbolBonus;
+int pac_speed;
+int ghost_speed;
+int ghost_tunnelspeed;
+int elroy_1_dots;
+int elroy_1_speed;
+int elroy_2_dots;
+int elroy_2_speed;
+int fright_pac;
+int fright_ghost;
+int fright_time;
+int fright_flashes;
+}LevelState;
+
+typedef enum{
     EMPTY,POINT,ENERGISER,
 
     UPWALL, DOWNWALL, RIGHTWALL, LEFTWALL,
@@ -63,7 +97,8 @@ typedef struct{
     int windowx, windowy;
     Direction d;
     Position Target;
-    void (*Step_Ghost) (struct State*);
+    Position home;
+    void (*NextTarget) (struct State*);
 } Ghost;
 
 typedef struct State {
@@ -73,7 +108,16 @@ typedef struct State {
     Ghost* Pinky;
     Ghost* Inky;
     Ghost* Clyde;
+    LevelState* ls;
+    int dotseaten;
     int points;
+    int modeid;
+    int levelid;
+    int levelnum;
 } State;
+
+Position Nextmove(Position pos, Direction dir);
+
+int Distance(Position from, Position to);
 
 #endif // PACDEF_H_INCLUDED

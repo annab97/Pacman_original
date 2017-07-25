@@ -6,7 +6,7 @@
 
 void Init_pacman(State* game_state);
 
-void Step_pacman(State* game_state);
+int Step_pacman(State* game_state);
 
 void Move_pacman(State* game_state, Direction dir);
 

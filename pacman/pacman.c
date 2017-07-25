@@ -8,36 +8,13 @@ void Init_pacman(State* game_state)
     pac->y=26;
     pac->windowx=pac->x*8-4;
     pac->windowy=pac->y*8-4;
-    pac->next_step=Left;
+    pac->next_step=Standing;
     pac->frame=FULL;
-    pac->d=Left;
-    pac->nextd=Left;
+    pac->d=Standing;
+    pac->nextd=Standing;
 }
 
-Position Nextmove(Position pos, Direction dir)
-{
-    Position nextpos;
-    nextpos.x=pos.x;
-    nextpos.y=pos.y;
-    switch(dir)
-    {
-        case Standing:
-        break;
-        case Up:
-        nextpos.y--;
-        break;
-        case Down:
-        nextpos.y++;
-        break;
-        case Right:
-        nextpos.x++;
-        break;
-        case Left:
-        nextpos.x--;
-        break;
-    }
-    return nextpos;
-}
+
 
 PACFRAME Next_frame(Pacman* pac)
 {
@@ -53,7 +30,9 @@ PACFRAME Next_frame(Pacman* pac)
 
 
 
-void Step_pacman(State* game_state){
+int Step_pacman(State* game_state){
+    int hasEaten=0;
+
     PACFRAME nf=Next_frame(game_state->pacman);
     Pacman* pac=game_state->pacman;
 
@@ -96,6 +75,7 @@ void Step_pacman(State* game_state){
     }
     if(pac->nextd!= pac->d && game_state->field->table[nextpos.y][nextpos.x]<=2)
     {
+
         switch(pac->nextd)
         {
             case Standing:
@@ -172,14 +152,17 @@ void Step_pacman(State* game_state){
     if(game_state->field->table[pac->y][pac->x]==POINT)
     {
         game_state->points+=10;
+        hasEaten=1;
         game_state->field->table[pac->y][pac->x]=EMPTY;
     }
     if(game_state->field->table[pac->y][pac->x]==ENERGISER)
     {
         game_state->points+=50;
+        hasEaten=2;
         game_state->field->table[pac->y][pac->x]=0;
     }
     game_state->pacman->frame=nf;
+    return hasEaten;
 
 }
 

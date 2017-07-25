@@ -5,7 +5,7 @@
 
 void Init_Ghosts(State* game_state);
 
-void Step_Ghost(State* game_state,Ghost* ghost);
+int Step_Ghost(State* game_state,Ghost* ghost);
 
 void Free_Ghosts(State* game_state);
 

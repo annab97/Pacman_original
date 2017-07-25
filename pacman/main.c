@@ -31,10 +31,122 @@ void print_maze()
         }
     }
     fwrite(&m,sizeof(Maze),1,fp);
+    fclose(fp);
+}
+
+void Copy(Mode* from, Mode* to)
+{
+    for(int i=0;i<8;i++)
+    {
+        to[i]=from[i];
+    }
+}
+
+void print_Levelstate()
+{
+    FILE *fp;
+    fp = fopen("levelStates.dat", "wb");
+    if(fp==NULL)
+    {
+        perror("Error: Failed to load field.dat");
+        return FAILED;
+    }
+    fclose(fp);
+    fp = fopen("levelStates.dat", "wb");
+    FILE *f;
+    f = fopen("levelstates.txt", "rt");
+    if(f==NULL)
+    {
+        perror("Error: Failed to load field.dat");
+        return FAILED;
+    }
+    FILE *fmodes;
+    fmodes = fopen("modes.txt", "rt");
+    if(f==NULL)
+    {
+        perror("Error: Failed to load field.dat");
+        return FAILED;
+    }
+    char* names[]={"Cherries","Strawberry","Peach","Apple","Grapes","Galaxian","Bell","Key"};
+
+    LevelState stages[21];
+    fscanf(f,"%*[^\n]\n",NULL);
+    for(int i=0;i<21;i++)
+    {
+        LevelState ls;
+        fscanf(f,"%d",&ls.id);
+        char sym[20];
+        fscanf(f,"%s",sym);
+        Symbol s;
+        for(int j=0;j<8;j++)
+        {
+            if(strcmp(names[j],sym)==0)
+            {
+                s=i;
+            }
+        }
+        ls.symbol=s;
+        fscanf(f,"%d",&ls.symbolBonus);
+        fscanf(f,"%d",&ls.pac_speed);
+        fscanf(f,"%d",&ls.ghost_speed);
+        fscanf(f,"%d",&ls.ghost_tunnelspeed);
+        fscanf(f,"%d",&ls.elroy_1_dots);
+        fscanf(f,"%d",&ls.elroy_1_speed);
+        fscanf(f,"%d",&ls.elroy_2_dots);
+        fscanf(f,"%d",&ls.elroy_2_speed);
+        fscanf(f,"%d",&ls.fright_pac);
+        fscanf(f,"%d",&ls.fright_ghost);
+        fscanf(f,"%d",&ls.fright_time);
+        fscanf(f,"%d",&ls.fright_flashes);
+        stages[i]=ls;
+    }
+    int untils[3];
+    char* modenames[]= {"Scatter","Chase","Frightening"};
+    fscanf(fmodes,"%*s",NULL);
+    Mode modes[3][8];
+    for(int i=0;i<3;i++)
+    {
+        fscanf(fmodes,"%d",&untils[i]);
+    }
+    for(int i=0;i<8;i++)
+    {
+        ModeName mn;
+        char modename[10];
+        fscanf(fmodes,"%s",modename);
+        for(int j=0;j<3;j++)
+        {
+            if(strcmp(modename,modenames[j])==0)
+                mn=j;
+        }
+        for(int j=0;j<3;j++)
+        {
+            double time;
+            fscanf(fmodes,"%lf",&time);
+            Mode m; m.name=mn; m.delay=time;
+            modes[j][i]=m;
+        }
+    }
+    int uindex=0;
+    for(int i=0;i<21;)
+    {
+        while(i<untils[uindex]-1)
+        {
+            Copy(modes[uindex],stages[i].modes);
+            i++;
+        }
+        uindex++;
+    }
+
+
+    fwrite(stages,sizeof(LevelState),21,fp);
+    fclose(fmodes);
+    fclose(f);
+    fclose(fp);
 }
 
 int main()
 {
+    //print_Levelstate();
     //print_maze();
     Init_window();
      /*SDL_Event ev;

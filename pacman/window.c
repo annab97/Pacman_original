@@ -6,6 +6,19 @@
 
 #define PAC_TICK SDL_USEREVENT+2
 
+#define BLINKY_TICK SDL_USEREVENT+3
+
+#define INKY_TICK SDL_USEREVENT+4
+
+#define CLYDE_TICK SDL_USEREVENT+5
+
+#define MODE_TICK SDL_USEREVENT+6
+
+typedef struct {
+    Uint32 event_type;
+    Uint32 nexttick;
+}ActorTimer;
+
 void Drawfield(SDL_Surface* img, SDL_Surface* screen, State* game_state)
 {
      SDL_Rect src = {0,0,TILE_SIZE,TILE_SIZE};
@@ -164,8 +177,43 @@ void Drawfield(SDL_Surface* img, SDL_Surface* screen, State* game_state)
 
 }
 
+void Drawghost(SDL_Surface* image,SDL_Surface* screen,Ghost* ghost, int startx, int starty)
+{
+    SDL_Rect src = {0,0,TILE_SIZE*2,TILE_SIZE*2};
+    switch(ghost->d)
+     {
+        case Standing:
+        case Down:
+        src.x=(startx+4)*TILE_SIZE;
+        src.y=starty*TILE_SIZE;
+        break;
+        case Right:
+        src.x=(startx)*TILE_SIZE;
+        src.y=starty*TILE_SIZE;
+        break;
+        case Up:
+        src.x=(startx+12)*TILE_SIZE;
+        src.y=starty*TILE_SIZE;
+        break;
+        case Left:
+        src.x=(startx+8)*TILE_SIZE;
+        src.y=starty*TILE_SIZE;
+        break;
+     }
+     SDL_Rect dest={0,0,0,0};
+     dest.y=ghost->windowy*3;
+     dest.x=ghost->windowx*3;
+
+     SDL_BlitSurface(image, &src, screen, &dest);
+}
+
 void Drawactors(SDL_Surface* image,SDL_Surface* screen,State* game_state)
 {
+     Drawghost(image,screen,game_state->Blinky,0,12);
+     Drawghost(image,screen,game_state->Pinky,0,16);
+     Drawghost(image,screen,game_state->Inky,16,16);
+     Drawghost(image,screen,game_state->Clyde,0,18);
+
      //DRAWPACMAN
      SDL_Rect src = {0,0,TILE_SIZE*2,TILE_SIZE*2};
      switch(game_state->pacman->frame)
@@ -216,19 +264,7 @@ void Drawactors(SDL_Surface* image,SDL_Surface* screen,State* game_state)
      SDL_Rect dest={x,y,0,0};
      SDL_BlitSurface(image, &src, screen, &dest);
 
-     //Blinky
-     switch(game_state->Blinky->d)
-     {
-        case Standing:
-        case Down:
-        src.x=4*TILE_SIZE;
-        src.y=12*TILE_SIZE;
-        break;
-     }
-     dest.y=game_state->Blinky->windowy*3;
-     dest.x=game_state->Blinky->windowx*3;
 
-     SDL_BlitSurface(image, &src, screen, &dest);
 }
 
 void Draw(SDL_Surface* screen, State* game_state,SDL_Surface* image)
@@ -240,12 +276,15 @@ void Draw(SDL_Surface* screen, State* game_state,SDL_Surface* image)
     SDL_Flip(screen);
 }
 
-Uint32 Pac_tick (Uint32 ms, void* param)
+Uint32 Actor_tick (Uint32 ms, void* param)
 {
+    ActorTimer* timer=(ActorTimer*) param;
     SDL_Event ev;
-    ev.type = PAC_TICK;
+    ev.type = timer->event_type;
     SDL_PushEvent(&ev);
-    return ms;   /* ujabb varakozas */
+    //printf("%d\n",timer->nexttick);
+    //printf("%d\n",*(int*) param);
+    return timer->nexttick;   /* ujabb varakozas */
 }
 
 Uint32 Draw_tick (Uint32 ms, void* param)
@@ -254,6 +293,14 @@ Uint32 Draw_tick (Uint32 ms, void* param)
     ev.type = DRAW_TICK;
     SDL_PushEvent(&ev);
     return ms;   /* ujabb varakozas */
+}
+
+Uint32 Mode_tick(Uint32 ms, void* param)
+{
+    SDL_Event ev;
+    ev.type = MODE_TICK;
+    SDL_PushEvent(&ev);
+    return 0;
 }
 
 
@@ -277,16 +324,37 @@ Result Init_window()
 
     Draw(screen,game_state,image);
     SDL_Event ev;
-    SDL_TimerID pact = SDL_AddTimer(33, Pac_tick, NULL);
+    ActorTimer Pac_timer={PAC_TICK,33};
+    ActorTimer Blinky_timer={BLINKY_TICK,Pac_timer.nexttick*80/75};
+    SDL_TimerID pact = SDL_AddTimer(33, Actor_tick, &Pac_timer);
+    SDL_TimerID blinky_t = SDL_AddTimer(Blinky_timer.nexttick, Actor_tick, &Blinky_timer);
     SDL_TimerID drawt = SDL_AddTimer(16.5, Draw_tick, NULL);
+
+    int delay=game_state->ls[game_state->levelid].modes[game_state->modeid].delay;
+    SDL_TimerID mode_timer=SDL_AddTimer(delay,Mode_tick,NULL);
      while (SDL_WaitEvent(&ev) && ev.type != SDL_QUIT) {
         switch(ev.type)
         {
             case PAC_TICK:
-                Step_pacman(game_state);
+                ;int hasEaten=Step_pacman(game_state);
+                if(hasEaten==1)
+                    Pac_timer.nexttick=16.5+33;
+                else if(hasEaten==2)
+                    Pac_timer.nexttick=4*16.5+33;
+                else
+                    Pac_timer.nexttick=33;
+            break;
+            case BLINKY_TICK:
+                ;int nexttime=Step_Ghost(game_state,game_state->Blinky);
+                Blinky_timer.nexttick=33*80/nexttime;
             break;
             case DRAW_TICK:
                 Draw(screen,game_state,image);
+            break;
+            case MODE_TICK:
+                delay=Change_mode(game_state);
+                if(delay!=-1)
+                    mode_timer=SDL_AddTimer(delay,Mode_tick,NULL);
             break;
             case SDL_KEYDOWN:
                 switch(ev.key.keysym.sym)

@@ -16,6 +16,6 @@ int Close_game(State** game_state);
 // game
 int Step(State* game_state);
 
-int Move_pacman(State* game_state, Direction dir);
+int Change_mode(State* game_state);
 
 #endif // PACMAN_H_INCLUDED
