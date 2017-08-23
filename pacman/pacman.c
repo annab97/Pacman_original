@@ -20,7 +20,7 @@ PACFRAME Next_frame(Pacman* pac)
 {
     if(pac->d==Standing)
         return pac->frame;
-    if(pac->frame>=LSSMALL)
+    if(pac->frame>=USSMALL)
         return FULL;
     if(pac->frame==FULL)
         return pac->d;
@@ -151,13 +151,13 @@ int Step_pacman(State* game_state){
     }
     if(game_state->field->table[pac->y][pac->x]==POINT)
     {
-        game_state->points+=10;
+        game_state->score+=10;
         hasEaten=1;
         game_state->field->table[pac->y][pac->x]=EMPTY;
     }
     if(game_state->field->table[pac->y][pac->x]==ENERGISER)
     {
-        game_state->points+=50;
+        game_state->score+=50;
         hasEaten=2;
         game_state->field->table[pac->y][pac->x]=0;
     }

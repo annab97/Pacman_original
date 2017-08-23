@@ -12,8 +12,9 @@ int Init_game(State** game_state)
     State* gs=*game_state;
     gs->modeid=0;
     gs->dotseaten=0;
-    gs->points=0;
     gs->levelid=0;
+    gs->score=0;
+    gs->lives=2;
     LevelState* stages=malloc(21*sizeof(LevelState));
     FILE* fp;
     fp=fopen("levelStates.dat","rb");
@@ -52,11 +53,19 @@ int Change_mode(State* game_state)
 int Start_frightening(State* game_state)
 {
     game_state->currentState=FRIGHTENING;
-    Reverse_ghost_direction();
+    Reverse_ghost_direction(game_state);
+    Go_frightening(game_state->Blinky);
+    Go_frightening(game_state->Pinky);
+    Go_frightening(game_state->Inky);
+    Go_frightening(game_state->Clyde);
     return game_state->ls[game_state->levelid].fright_time*1000;
 }
 
 void End_frightening(State* game_state)
 {
  game_state->currentState=game_state->ls[game_state->levelid].modes[game_state->modeid].name;
+ Stop_frightening(game_state->Blinky);
+ Stop_frightening(game_state->Pinky);
+ Stop_frightening(game_state->Inky);
+ Stop_frightening(game_state->Clyde);
 }

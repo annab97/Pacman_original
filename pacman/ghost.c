@@ -1,6 +1,7 @@
 #include "ghost.h"
+#include <stdlib.h>
 
-void Init_ghost(Ghost* ghost, GHOST name,int x,int y)
+void Init_ghost(Ghost* ghost, GHOSTNAME name,int x,int y)
 {
     ghost->name=name;
     ghost->y=y;
@@ -8,6 +9,7 @@ void Init_ghost(Ghost* ghost, GHOST name,int x,int y)
     ghost->windowx=ghost->x*8-4;
     ghost->windowy=ghost->y*8-4;
     ghost->d=Standing;
+    ghost->status=GS_NORMAL;
 }
 void Blinky_AI(State* game_state)
 {
@@ -19,10 +21,6 @@ void Blinky_AI(State* game_state)
         blinky->Target.y=game_state->pacman->y;
         break;
         case SCATTER:
-        blinky->Target=blinky->home;
-        break;
-        case FRIGHTENING:
-        blinky->d=Standing;
         blinky->Target=blinky->home;
         break;
     }
@@ -70,6 +68,7 @@ void Blinky_AI(State* game_state)
 
 void Init_Ghosts(State* game_state)
 {
+    srand(0);
     game_state->Blinky=malloc(sizeof(Ghost));
     Init_ghost(game_state->Blinky,BLINKY,13,14);
     game_state->Blinky->NextTarget=Blinky_AI;
@@ -101,25 +100,49 @@ int Step_Ghost(State* game_state,Ghost* ghost)
 {
     if(ghost->windowx%8==4 && ghost->windowy%8==4)
     {
-        ghost->NextTarget(game_state);
-        Position ghostpos; ghostpos.x=ghost->x; ghostpos.y=ghost->y;
-        int min=ROWS*COLUMNS*ROWS*COLUMNS;
-        int mini=0;
-        for(int i=1;i<5;i++)
+        switch(ghost->status)
         {
-            Position nextpos=Nextmove(ghostpos,i);
-            if(game_state->field->table[nextpos.y][nextpos.x]<=2 &&
-                !Opposite(ghost->d,i) && !(i==Up && Forbidden(nextpos)))
-            {
-                int dis=Distance(ghost->Target,nextpos);
-                if(min>dis)
+            case GS_NORMAL:
+                ghost->NextTarget(game_state);
+                Position ghostpos; ghostpos.x=ghost->x; ghostpos.y=ghost->y;
+                int min=ROWS*COLUMNS*ROWS*COLUMNS;
+                int mini=0;
+                for(int i=1;i<5;i++)
                 {
-                   min=dis;
-                   mini=i;
+                    Position nextpos=Nextmove(ghostpos,i);
+                    if(game_state->field->table[nextpos.y][nextpos.x]<=2 &&
+                        !Opposite(ghost->d,i) && !(i==Up && Forbidden(nextpos)))
+                    {
+                        int dis=Distance(ghost->Target,nextpos);
+                        if(min>dis)
+                        {
+                           min=dis;
+                           mini=i;
+                        }
+                    }
                 }
-            }
+                ghost->d=mini;
+            break;
+            case GS_FLASHING:
+            case GS_FRIGHTENING:
+                ;Direction d=rand()%4+1;
+                Position gp; gp.x=ghost->x; gp.y=ghost->y;
+                Position np=Nextmove(gp,d);
+                if(game_state->field->table[np.y][np.x]<=2 && !Opposite(ghost->d,d))
+                {
+                    ghost->d=d;
+                    break;
+                }
+                d=Up;
+                np=Nextmove(gp,d);
+                while(game_state->field->table[np.y][np.x]>2 || Opposite(ghost->d,d))
+                {
+                    d++;
+                    np=Nextmove(gp,d);
+                }
+                ghost->d=d;
+            break;
         }
-        ghost->d=mini;
     }
     switch(ghost->d)
     {
@@ -152,10 +175,10 @@ int Step_Ghost(State* game_state,Ghost* ghost)
         ghost->x=1;
     }
     if(ghost->y==17 && (ghost->x<6 || ghost->x>21))
-    {
-        return 45;
-    }
-    return 75;
+        return game_state->ls[game_state->levelid].ghost_tunnelspeed;
+    if(game_state->currentState==FRIGHTENING)
+        return game_state->ls[game_state->levelid].fright_ghost;
+    return game_state->ls[game_state->levelid].ghost_speed;
 
 }
 
@@ -183,6 +206,29 @@ void Reverse_ghost_direction(State* game_state)
     gm->Pinky->d=Opposite_dir(gm->Pinky->d);
     gm->Inky->d=Opposite_dir(gm->Inky->d);
     gm->Clyde->d=Opposite_dir(gm->Clyde->d);
+}
+void Go_frightening(Ghost* ghost)
+{
+    if(ghost->status==GS_NORMAL || ghost->status==GS_FLASHING)
+        ghost->status=GS_FRIGHTENING;
+}
+
+void Flash_ghosts(State* game_state)
+{
+    if(game_state->Blinky->status==GS_FRIGHTENING)
+        game_state->Blinky->status=GS_FLASHING;
+    if(game_state->Pinky->status==GS_FRIGHTENING)
+        game_state->Pinky->status=GS_FLASHING;
+    if(game_state->Inky->status==GS_FRIGHTENING)
+        game_state->Inky->status=GS_FLASHING;
+    if(game_state->Clyde->status==GS_FRIGHTENING)
+        game_state->Clyde->status=GS_FLASHING;
+}
+
+void Stop_frightening(Ghost* ghost)
+{
+    if(ghost->status==GS_FRIGHTENING || ghost->status==GS_FLASHING)
+        ghost->status=GS_NORMAL;
 }
 
 void Free_Ghosts(State* game_state)

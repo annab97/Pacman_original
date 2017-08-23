@@ -16,12 +16,22 @@
 
 #define FRIGHT_END SDL_USEREVENT+7
 
+#define FLASH_START SDL_USEREVENT+8
+
+#define DRAW_FREQUENCY 16.5
+
+#define FAST_FLASH_FREQUENCY 8
+
+#define FLASH_FREQUENCY 10
+
+#define PAC_SPEED 33
+
 typedef struct {
     Uint32 event_type;
     Uint32 nexttick;
 }ActorTimer;
 
-void Drawfield(SDL_Surface* img, SDL_Surface* screen, State* game_state)
+void Drawfield(SDL_Surface* img, SDL_Surface* screen, State* game_state,int counter)
 {
      SDL_Rect src = {0,0,TILE_SIZE,TILE_SIZE};
 
@@ -162,8 +172,15 @@ void Drawfield(SDL_Surface* img, SDL_Surface* screen, State* game_state)
               src.y=0*TILE_SIZE;
               break;
               case ENERGISER:
-              src.x=20*TILE_SIZE;
-              src.y=0*TILE_SIZE;
+              if(counter%(FAST_FLASH_FREQUENCY*2)<FAST_FLASH_FREQUENCY)
+              {
+                src.x=20*TILE_SIZE;
+                src.y=0*TILE_SIZE;
+              }
+              else{
+                src.x=0*TILE_SIZE;
+              src.y=4*TILE_SIZE;
+              }
               break;
 
               default:
@@ -179,10 +196,16 @@ void Drawfield(SDL_Surface* img, SDL_Surface* screen, State* game_state)
 
 }
 
-void Drawghost(SDL_Surface* image,SDL_Surface* screen,Ghost* ghost, int startx, int starty,ModeName mn)
+void Drawghost(SDL_Surface* image,SDL_Surface* screen,Ghost* ghost, int startx, int starty,ModeName mn, int counter)
 {
     SDL_Rect src = {0,0,TILE_SIZE*2,TILE_SIZE*2};
-    if(mn==FRIGHTENING)
+
+    if(ghost->status==GS_FLASHING && counter%(FLASH_FREQUENCY*2)<FLASH_FREQUENCY)
+    {
+        src.y=8*TILE_SIZE;
+     src.x=12*TILE_SIZE;
+    }
+    else if(ghost->status==GS_FRIGHTENING || ghost->status==GS_FLASHING)
     {
      src.y=8*TILE_SIZE;
      src.x=16*TILE_SIZE;
@@ -209,6 +232,10 @@ void Drawghost(SDL_Surface* image,SDL_Surface* screen,Ghost* ghost, int startx, 
             break;
          }
      }
+     if((ghost->windowx+ghost->windowy)%4==0)
+     {
+        src.x+=2*TILE_SIZE;
+     }
      SDL_Rect dest={0,0,0,0};
      dest.y=ghost->windowy*3;
      dest.x=ghost->windowx*3;
@@ -216,13 +243,13 @@ void Drawghost(SDL_Surface* image,SDL_Surface* screen,Ghost* ghost, int startx, 
      SDL_BlitSurface(image, &src, screen, &dest);
 }
 
-void Drawactors(SDL_Surface* image,SDL_Surface* screen,State* game_state)
+void Drawactors(SDL_Surface* image,SDL_Surface* screen,State* game_state,int counter)
 {
      ModeName current=game_state->currentState;
-     Drawghost(image,screen,game_state->Blinky,0,12,current);
-     Drawghost(image,screen,game_state->Pinky,0,16,current);
-     Drawghost(image,screen,game_state->Inky,16,16,current);
-     Drawghost(image,screen,game_state->Clyde,0,18,current);
+     Drawghost(image,screen,game_state->Blinky,0,12,current,counter);
+     Drawghost(image,screen,game_state->Pinky,0,16,current, counter);
+     Drawghost(image,screen,game_state->Inky,16,16,current, counter);
+     Drawghost(image,screen,game_state->Clyde,0,18,current, counter);
 
      //DRAWPACMAN
      SDL_Rect src = {0,0,TILE_SIZE*2,TILE_SIZE*2};
@@ -277,13 +304,83 @@ void Drawactors(SDL_Surface* image,SDL_Surface* screen,State* game_state)
 
 }
 
+void Drawlives(SDL_Surface* image, SDL_Surface* screen, int lives)
+{
+    SDL_Rect src = {0,6*TILE_SIZE,TILE_SIZE*2,TILE_SIZE*2};
+    for(int i=0;i<lives;i++)
+    {
+      SDL_Rect dest={(i+1)*TILE_SIZE*2,34*TILE_SIZE,0,0};
+      SDL_BlitSurface(image, &src, screen, &dest);
+    }
+}
+
+
+void Drawlevels(SDL_Surface* image, SDL_Surface* screen, State* game_state)
+{
+    int start=game_state->levelid>7?game_state->levelid-6:0;
+    for(int i=0; i+start<=game_state->levelid;i++)
+    {
+        SDL_Rect src = {0,0,TILE_SIZE*2,TILE_SIZE*2};
+        src.x=2*game_state->ls[i].symbol*TILE_SIZE;
+        src.y=10*TILE_SIZE;
+        SDL_Rect dest={(12-i)*TILE_SIZE*2,34*TILE_SIZE,0,0};
+        SDL_BlitSurface(image, &src, screen, &dest);
+    }
+}
+
+void DrawT(SDL_Surface* image, SDL_Surface* screen, char* text, int lastchar, int row, int flashing, int counter)
+{
+    int length=0;
+    for(;text!=NULL && text[length]!='\0';length++);
+    if(!flashing || counter%(FAST_FLASH_FREQUENCY*2)<FAST_FLASH_FREQUENCY)
+    {
+        for(int i=0;i<=length;i++)
+        {
+            SDL_Rect src = {0,0,TILE_SIZE,TILE_SIZE};
+            if(text[length-i]==' ')
+            {
+                src.x=0*TILE_SIZE;
+                src.y=4*TILE_SIZE;
+            }
+            else if(text[length-i]<='9')
+            {
+                src.y=0;
+                src.x=(text[length-i]-'0')*TILE_SIZE;
+            }else
+            {
+                src.y=2*TILE_SIZE;
+                src.x=(text[length-i]-'A'+1)*TILE_SIZE;
+            }
+            SDL_Rect dest={(lastchar-i)*TILE_SIZE,row*TILE_SIZE,0,0};
+            SDL_BlitSurface(image,&src,screen,&dest);
+        }
+    }
+}
+
+void DrawTexts(SDL_Surface* image, SDL_Surface* screen, int counter, int score)
+{
+    char* level="1UP";
+    char* highscore="HIGH SCORE";
+    char sscore [8];
+
+    sprintf(sscore,"%02d",score);
+
+    DrawT(image,screen, level,6,0,1, counter);
+    DrawT(image,screen, highscore,19,0,0,0);
+    DrawT(image, screen, sscore,7,1,0,0);
+
+}
+
 void Draw(SDL_Surface* screen, State* game_state,SDL_Surface* image)
 {
-
-
-    Drawfield(image,screen, game_state);
-    Drawactors(image, screen, game_state);
+    static int counter=0;
+    Drawfield(image,screen, game_state,counter);
+    Drawactors(image, screen, game_state, counter);
+    Drawlives(image,screen,game_state->lives);
+    Drawlevels(image,screen,game_state);
+    DrawTexts(image, screen, counter,game_state->score);
     SDL_Flip(screen);
+    counter++;
 }
 
 Uint32 Actor_tick (Uint32 ms, void* param)
@@ -305,21 +402,34 @@ Uint32 Draw_tick (Uint32 ms, void* param)
     return ms;   /* ujabb varakozas */
 }
 
-Uint32 Mode_tick(Uint32 ms, void* param)
+Uint32 Unique_event(Uint32 ms, void* param)
 {
-    int* st=(int *) param;
-    *st=SDL_GetTicks();
+
+    SDL_Event* ev=(SDL_Event*) param;
+    SDL_PushEvent(ev);
+    return 0;
+}
+
+/*Uint32 Mode_tick(Uint32 ms, void* param)
+{
     SDL_Event ev;
     ev.type = MODE_TICK;
     SDL_PushEvent(&ev);
+    printf("barack\n");
     return 0;
 }
 
 Uint32 Fright_timer(Uint32 ms, void* param)
 {
     SDL_Event ev;
-    ev.type = FRIGHT_END;
+    ev.type = FLASH_START;
     SDL_PushEvent(&ev);
+
+    return 0;
+}*/
+
+Uint32 Test_tick(Uint32 ms, void* param)
+{
     return 0;
 }
 
@@ -341,22 +451,27 @@ Result Init_window()
     }
     State* game_state;
     Init_game(&game_state);
+    Draw(screen,game_state,image);
 
+    //////////////////////////SET_UP TIMERS
     int before_frightening=-1;
     SDL_TimerID frightening_timer;
     int starttime=SDL_GetTicks();
+    int modeev=MODE_TICK;
+    int frightev=FRIGHT_END;
+    int flashev=FLASH_START;
 
-    Draw(screen,game_state,image);
     SDL_Event ev;
-    ActorTimer Pac_timer={PAC_TICK,33};
+    ActorTimer Pac_timer={PAC_TICK,PAC_SPEED};
     ActorTimer Blinky_timer={BLINKY_TICK,Pac_timer.nexttick*80/75};
-    SDL_TimerID pact = SDL_AddTimer(33, Actor_tick, &Pac_timer);
+    SDL_TimerID pact = SDL_AddTimer(PAC_SPEED, Actor_tick, &Pac_timer);
     SDL_TimerID blinky_t = SDL_AddTimer(Blinky_timer.nexttick, Actor_tick, &Blinky_timer);
-    SDL_TimerID drawt = SDL_AddTimer(16.5, Draw_tick, NULL);
+    SDL_TimerID drawt = SDL_AddTimer(DRAW_FREQUENCY, Draw_tick, NULL);
 
-    int delay=game_state->ls[game_state->levelid].modes[game_state->modeid].delay;
-    SDL_TimerID mode_timer=SDL_AddTimer(delay,Mode_tick,&starttime);
+    int mode_delay=game_state->ls[game_state->levelid].modes[game_state->modeid].delay;
+    SDL_TimerID mode_timer=SDL_AddTimer(mode_delay,Unique_event,&modeev);
 
+    //////////////////////EVENT_LOOP
      while (SDL_WaitEvent(&ev) && ev.type != SDL_QUIT) {
         switch(ev.type)
         {
@@ -364,38 +479,63 @@ Result Init_window()
                 ;int hasEaten=Step_pacman(game_state);
                 if(hasEaten==1)
                 {
-                    Pac_timer.nexttick=16.5+33;
+                    Pac_timer.nexttick=DRAW_FREQUENCY+PAC_SPEED;
                 }
                 else if(hasEaten==2)
                 {
-                    SDL_RemoveTimer(frightening_timer);
-                    Pac_timer.nexttick=4*16.5+33;
-                    int frigdelay=Start_frightening(game_state);
-                    before_frightening=SDL_GetTicks()-starttime;
-                    frightening_timer=SDL_AddTimer(frigdelay,Fright_timer,NULL);
                     SDL_RemoveTimer(mode_timer);
+                    SDL_RemoveTimer(frightening_timer);
+                    Pac_timer.nexttick=4*DRAW_FREQUENCY+PAC_SPEED;
+                    int frigmode_delay=Start_frightening(game_state);
+                    if(before_frightening==-1)
+                        before_frightening=SDL_GetTicks()-starttime;
+                    int delay=frigmode_delay-2*FLASH_FREQUENCY*DRAW_FREQUENCY*game_state->ls[game_state->levelid].fright_flashes;
+                    frightening_timer=SDL_AddTimer(delay,Unique_event,&flashev);
+                    if(frightening_timer==NULL) printf("ures\n"); else printf("successful\n");
+
+                    mode_timer=NULL;
                 }
                 else
                 {
-                    Pac_timer.nexttick=33;
+                    Pac_timer.nexttick=PAC_SPEED;
                 }
             break;
             case BLINKY_TICK:
                 ;int nexttime=Step_Ghost(game_state,game_state->Blinky);
-                Blinky_timer.nexttick=33*80/nexttime;
+                Blinky_timer.nexttick=PAC_SPEED*80/nexttime;
             break;
             case DRAW_TICK:
                 Draw(screen,game_state,image);
             break;
             case MODE_TICK:
-                delay=Change_mode(game_state);
-                if(delay!=-1)
-                    mode_timer=SDL_AddTimer(delay,Mode_tick,&starttime);
+
+                SDL_RemoveTimer(mode_timer);
+                mode_delay=Change_mode(game_state);
+                starttime=SDL_GetTicks();
+                if(mode_delay!=-1)
+                    mode_timer=SDL_AddTimer(mode_delay,Unique_event,&modeev);
+            break;
+            case FLASH_START:
+            Flash_ghosts(game_state);
+            int flashtime=2*FLASH_FREQUENCY*DRAW_FREQUENCY*game_state->ls[game_state->levelid].fright_flashes;
+            frightening_timer=SDL_AddTimer(flashtime,Unique_event,&frightev);
             break;
             case FRIGHT_END:
                 End_frightening(game_state);
-                if(delay!=-1)
-                    mode_timer=SDL_AddTimer(delay-before_frightening,Mode_tick,&starttime);
+                starttime=SDL_GetTicks()-before_frightening;
+                SDL_RemoveTimer(frightening_timer);
+                if(mode_delay!=-1 && mode_timer==NULL)
+                {
+                    Uint32 delay=mode_delay-before_frightening/10*10;
+                    mode_timer=SDL_AddTimer(delay,Unique_event,&modeev);
+                    if(mode_timer==NULL)
+                        printf("error\n");
+                    printf("modetimer: %u\n",delay);
+                }
+
+
+
+                before_frightening=-1;
             break;
             case SDL_KEYDOWN:
                 switch(ev.key.keysym.sym)
@@ -419,6 +559,9 @@ Result Init_window()
     Close_game(&game_state);
     SDL_RemoveTimer(pact);
     SDL_RemoveTimer(drawt);
+     SDL_RemoveTimer(blinky_t);
+     SDL_RemoveTimer(mode_timer);
+     SDL_RemoveTimer(frightening_timer);
      SDL_FreeSurface(image);
     SDL_Quit();
     return SUCCESFULL;
